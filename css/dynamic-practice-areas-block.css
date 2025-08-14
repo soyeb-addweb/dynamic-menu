@@ -1,0 +1,99 @@
+.wp-block-dynamic-practice-areas {
+    margin: 1.5em 0;
+}
+
+.practice-areas-block-title {
+    margin-bottom: 1em;
+    font-size: 1.2em;
+    line-height: 1.4;
+}
+
+.dynamic-practice-areas-widget ul.practice-areas-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dynamic-practice-areas-widget ul.practice-areas-list li {
+    margin-bottom: 0;
+    padding-left: 0;
+}
+
+.dynamic-practice-areas-widget ul.practice-areas-list li a {
+    display: block;
+    padding: 5px 0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.dynamic-practice-areas-widget ul.practice-areas-list li a:hover {
+    padding-left: 5px;
+}
+
+.dynamic-practice-areas-widget .select-city-message,
+.dynamic-practice-areas-widget .loading,
+.dynamic-practice-areas-widget .no-practice-areas {
+    color: #666;
+    font-style: italic;
+}
+
+/* Widget titles styling */
+.widget_dynamic_practice_areas_widget .widget-title,
+.widget_dynamic_related_locations_widget .widget-title,
+.practice-areas-title,
+.related-locations-title {
+    position: relative;
+    display: block;
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+/* Ensure customized widget titles appear properly */
+.practice-areas-title[style],
+.related-locations-title[style] {
+    display: block;
+}
+
+/* dynamic-related-locations.css */
+
+.elementor-dynamic-related-locations {
+    margin: 1.5em 0;
+}
+
+.related-locations-title {
+    margin-bottom: 1em;
+    font-size: 1.2em;
+    line-height: 1.4;
+}
+
+.dynamic-related-locations-widget ul.related-locations-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dynamic-related-locations-widget ul.related-locations-list li {
+    margin-bottom: 0;
+    padding-left: 0;
+}
+
+.dynamic-related-locations-widget ul.related-locations-list li a {
+    display: block;
+    padding: 5px 0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.dynamic-related-locations-widget ul.related-locations-list li a:hover {
+    padding-left: 5px;
+}
+
+.dynamic-related-locations-widget .loading,
+.dynamic-related-locations-widget .no-related-locations,
+.dynamic-related-locations-widget .error {
+    color: #666;
+}
+
+/* Add any additional styles needed for display_text and anchor_text formatting */
+.dynamic-related-locations-widget ul.related-locations-list li a.using-anchor-text {
+}
