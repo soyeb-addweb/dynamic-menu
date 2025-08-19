@@ -133,6 +133,9 @@
             if (!href || /^#|^(mailto|tel):/i.test(href)) return;
             $a.attr('href', rewritePracticeHrefForCity(href, citySlug));
         });
+
+        // Ensure v3 practice areas content is populated if empty
+        ensureV3PracticeAreasPopulated(citySlug);
     }
     function bindCityClicks() {
         var $root = $areasContentRoot();
@@ -181,6 +184,65 @@
     var lastMenuStateSlug = null;
     var bootedDynamicMenu = false;
     var isUpdatingPracticeAreasMenu = false;
+
+    function getUrlSegments() {
+        return window.location.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+    }
+
+    function getUrlContext() {
+        var segments = getUrlSegments();
+        var stateLayerEnabled = dynamicMenuData.state_layer_enabled === 'yes';
+        var defaultState = dynamicMenuData.default_state || '';
+        var stateSlug = '';
+        var citySlug = '';
+        var practiceAreaSlug = '';
+        var subPracticeAreaSlug = '';
+        if (stateLayerEnabled) {
+            if (segments.length >= 3) {
+                stateSlug = segments[0];
+                citySlug = segments[1];
+                practiceAreaSlug = segments[2];
+                subPracticeAreaSlug = segments[3] || '';
+            } else {
+                stateSlug = defaultState;
+                citySlug = segments[0] || dynamicMenuData.default_city;
+                practiceAreaSlug = segments[1] || '';
+            }
+        } else {
+            citySlug = segments[0] || dynamicMenuData.default_city;
+            practiceAreaSlug = segments[1] || '';
+            subPracticeAreaSlug = segments[2] || '';
+        }
+        return { stateSlug: stateSlug, citySlug: citySlug, practiceAreaSlug: practiceAreaSlug, subPracticeAreaSlug: subPracticeAreaSlug, stateLayerEnabled: stateLayerEnabled };
+    }
+
+    function ensureV3PracticeAreasPopulated(citySlug) {
+        // Only for Elementor v3 structures
+        var selectors = detectMenuSelectors();
+        if (!selectors.isV3) return;
+        var $root = $practiceContentRoot();
+        if ($root.find('a[href]').length > 0) return; // already populated
+        var ctx = getUrlContext();
+        var stateSlug = currentStateSlug || ctx.stateSlug || '';
+
+        // Fetch and build using existing builder for Elementor menus
+        $.ajax({
+            url: dynamicMenuData.ajaxurl,
+            method: 'GET',
+            data: {
+                city_slug: citySlug,
+                state_slug: stateSlug
+            },
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', dynamicMenuData.nonce);
+            },
+            success: function (response) {
+                if (response && response.success) {
+                    updateElementorPracticeAreasMenu(response);
+                }
+            }
+        });
+    }
 
     function scheduleDynamicMenuRefresh() {
         if (ecDynamicMenuRefreshTimer) {
@@ -232,7 +294,12 @@
             originalPracticeAreasMenu = $practiceAreasMenu.clone();
         }
 
-        // Detect current page and update menu if it's a city or practice area page
+        // If Elementor v3, initialize v3 flow first so storage/url context is applied
+        if (isV3) {
+            tryInitV3();
+        }
+
+        // Detect current page and update menu/widget
         detectCurrentPage();
 
         // Call the function to update related locations widget
@@ -240,7 +307,12 @@
 
         // If no city is active but we have a default city, use it
         if (!currentCitySlug && dynamicMenuData.default_city) {
-            loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
+            var defCity = dynamicMenuData.default_city;
+            if (isV3) {
+                applyCity(defCity, getCityNameBySlug(defCity));
+            } else {
+                loadDefaultCityPracticeAreas(defCity);
+            }
         }
 
         // Handle city page link clicks
@@ -996,6 +1068,10 @@
         }
         if (!$contentContainer.length) {
             $contentContainer = $('#pamenu');
+        }
+        if (!$contentContainer.length) {
+            // As a last resort, find a sibling mega content under current nav item
+            $contentContainer = $item.find('.e-con-inner, .elementor-widget-container').first();
         }
         if (!$contentContainer.length) {
             console.error('Practice Areas content container not found');
