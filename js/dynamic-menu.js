@@ -12,6 +12,168 @@
     var currentCityName = null;
     var currentStateSlug = null;
     var currentPracticeAreaSlug = null;
+    // --- Elementor v3 helpers (from stable reference) ---
+    function parseHref(href) {
+        var a = document.createElement('a');
+        a.href = href || '';
+        var origin = a.protocol && a.host ? (a.protocol + '//' + a.host) : window.location.origin;
+        var pathname = a.pathname || '/';
+        var parts = pathname.split('/').filter(Boolean);
+        var trailingSlash = /\/$/.test(pathname);
+        return {
+            origin: origin,
+            pathname: pathname,
+            parts: parts,
+            trailingSlash: trailingSlash,
+            search: a.search || '',
+            hash: a.hash || ''
+        };
+    }
+    function cityFromCityLink(href) {
+        var p = parseHref(href);
+        if (!p.parts.length) return null;
+        return p.parts[p.parts.length - 1];
+    }
+    function rewritePracticeHrefForCity(href, citySlug) {
+        var p = parseHref(href);
+        if (p.parts.length < 2) return href;
+        p.parts[p.parts.length - 2] = citySlug;
+        var newPath = '/' + p.parts.join('/') + (p.trailingSlash ? '/' : '');
+        var abs = /^https?:\/\//i.test(href || '');
+        return (abs ? p.origin : '') + newPath + p.search + p.hash;
+    }
+    function titleCase(str) {
+        return (str || '')
+            .replace(/[-_]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase()
+            .replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
+    }
+    // ---------- Menu selectors (auto-detect v2/v3) ----------
+    function detectMenuSelectors() {
+        var isV3 = $('.menu-item-areas-we-serve, .menu-item-practice-areas').length > 0;
+        var usingElementorMegaMenu = $('.e-n-menu').length > 0;
+
+        if (isV3) {
+            return {
+                isV3: true,
+                areas_we_serve: '#menu-item-areas-we-serve, .menu-item-areas-we-serve',
+                practice_areas: '#menu-item-practice-areas, .menu-item-practice-areas',
+                practice_title_text: '.e-n-menu-title-text'
+            };
+        } else {
+            return {
+                isV3: false,
+                areas_we_serve: usingElementorMegaMenu ?
+                    '#menu-item-areas-we-serve, .e-n-menu-item:contains("AREAS WE SERVE")' :
+                    dynamicMenuData.menu_selectors.areas_we_serve,
+                practice_areas: usingElementorMegaMenu ?
+                    '#menu-item-practice-areas, .e-n-menu-item:contains("PRACTICE AREAS")' :
+                    dynamicMenuData.menu_selectors.practice_areas,
+                practice_title_text: 'a'
+            };
+        }
+    }
+    function $areasTitle() {
+        return $('#menu-item-areas-we-serve, .menu-item-areas-we-serve').first();
+    }
+    function $practiceTitle() {
+        return $('#menu-item-practice-areas, .menu-item-practice-areas').first();
+    }
+    function $practiceTitleText() {
+        var $t = $practiceTitle();
+        return $t.find('.e-n-menu-title-text').length ? $t.find('.e-n-menu-title-text') : $t.find('> a');
+    }
+    function $areasContentRoot() {
+        var $t = $areasTitle();
+        if (!$t.length) return $();
+        var $item = $t.closest('.e-n-menu-item');
+        var $content = $item.find('.e-n-menu-content');
+        if ($content.length) return $content;
+        var $submenu = $item.find('.sub-menu');
+        return $submenu.length ? $submenu : $();
+    }
+    function $practiceContentRoot() {
+        var $t = $practiceTitle();
+        if (!$t.length) return $();
+        var $item = $t.closest('.e-n-menu-item');
+        var $content = $item.find('.e-n-menu-content');
+        if ($content.length) return $content;
+        var $submenu = $item.find('.sub-menu');
+        return $submenu.length ? $submenu : $();
+    }
+    function getCityNameBySlug(citySlug) {
+        if (!citySlug) return '';
+        var cityName = '';
+        if (window.dynamicMenuData && dynamicMenuData.city_pages) {
+            dynamicMenuData.city_pages.forEach(function (city) {
+                if (city.slug === citySlug) {
+                    cityName = city.title;
+                }
+            });
+        }
+        return cityName;
+    }
+    function applyCity(citySlug, cityName) {
+        if (!citySlug) return;
+        var label = (cityName && cityName.trim()) ? cityName : titleCase(citySlug);
+        var menuLabel = label + ' Practice Areas';
+        if (window.dynamicMenuData && dynamicMenuData.uppercase_menu === 'yes') {
+            menuLabel = menuLabel.toUpperCase();
+        }
+        var $txt = $practiceTitleText();
+        if ($txt.length) {
+            $txt.text(menuLabel);
+        }
+        var $root = $practiceContentRoot();
+        $root.find('a[href]').each(function () {
+            var $a = $(this);
+            var href = $a.attr('href');
+            if (!href || /^#|^(mailto|tel):/i.test(href)) return;
+            $a.attr('href', rewritePracticeHrefForCity(href, citySlug));
+        });
+    }
+    function bindCityClicks() {
+        var $root = $areasContentRoot();
+        if (!$root.length) return false;
+        $root.off('click.ecCity').on('click.ecCity', 'a[href]', function () {
+            var $a = $(this);
+            var href = $a.attr('href') || '';
+            var citySlug = cityFromCityLink(href);
+            var cityName = $.trim($a.text());
+            if (!citySlug) return;
+            try {
+                sessionStorage.setItem('currentCitySlug', citySlug);
+                sessionStorage.setItem('currentCityName', cityName);
+            } catch (err) {}
+            applyCity(citySlug, cityName);
+        });
+        return true;
+    }
+    var ecV3Booted = false;
+    function tryInitV3() {
+        var ok = $areasTitle().length && $practiceTitle().length;
+        if (!ok) return false;
+        if (!ecV3Booted) {
+            ecV3Booted = true;
+            bindCityClicks();
+            // apply from storage or URL
+            var slug = null, name = null;
+            try {
+                slug = sessionStorage.getItem('currentCitySlug');
+                name = sessionStorage.getItem('currentCityName');
+            } catch (err) {}
+            if (!slug) {
+                var parts = window.location.pathname.split('/').filter(Boolean);
+                if (parts.length >= 1) {
+                    slug = parts.length >= 2 ? parts[parts.length - 2] : parts[parts.length - 1];
+                }
+            }
+            if (slug) applyCity(slug, name || getCityNameBySlug(slug));
+        }
+        return true;
+    }
     var ecDynamicMenuRefreshTimer = null;
     var lastRelatedWidgetKey = null;
     var lastDetectionKey = null;
@@ -53,22 +215,15 @@
             }
         });
 
-        // Check if we're using Elementor Mega Menu or standard WP nav menu
+        // Auto-detect selectors for v2/v3
+        var menuSelectors = detectMenuSelectors();
+        var isV3 = !!menuSelectors.isV3;
         var usingElementorMegaMenu = $('.e-n-menu').length > 0;
-
-        var menuSelectors = {
-            areas_we_serve: usingElementorMegaMenu ?
-                '#menu-item-areas-we-serve, .e-n-menu-item:contains("AREAS WE SERVE")' :
-                dynamicMenuData.menu_selectors.areas_we_serve,
-            practice_areas: usingElementorMegaMenu ?
-                '#menu-item-practice-areas, .e-n-menu-item:contains("PRACTICE AREAS")' :
-                dynamicMenuData.menu_selectors.practice_areas
-        };
 
 
         // Cache DOM elements
-        var $areasWeServeMenu = $(menuSelectors.areas_we_serve);
-        var $practiceAreasMenu = $(menuSelectors.practice_areas);
+        var $areasWeServeMenu = $(menuSelectors.areas_we_serve).first();
+        var $practiceAreasMenu = $(menuSelectors.practice_areas).first();
         var $practiceAreasWidget = $(dynamicMenuData.widget_selector);
 
 
@@ -88,41 +243,52 @@
             loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
         }
 
-        // Handle city page link clicks for Elementor Mega Menu
-        if (usingElementorMegaMenu) {
-            $(document).off('click.ecAreasCity').on('click.ecAreasCity', menuSelectors.areas_we_serve + ' .elementor-icon-list-items a', function (e) {
-                var cityUrl = $(this).attr('href');
-                var citySlug = cityUrl.split('/').filter(Boolean).pop();
-                var cityName = $(this).text();
-
-
-                // Store city information in sessionStorage for persistence across page loads
-                sessionStorage.setItem('currentCitySlug', citySlug);
-                sessionStorage.setItem('currentCityName', cityName);
-            });
+        // Handle city page link clicks
+        if (isV3) {
+            // v3: simple rewrite and label update
+            $(document)
+                .off('click.ecAreasCity')
+                .on('click.ecAreasCity', menuSelectors.areas_we_serve + ' a', function () {
+                    var cityUrl = $(this).attr('href') || '';
+                    var citySlug = cityFromCityLink(cityUrl);
+                    var cityName = $(this).text();
+                    if (!citySlug) return;
+                    try {
+                        sessionStorage.setItem('currentCitySlug', citySlug);
+                        sessionStorage.setItem('currentCityName', cityName);
+                    } catch (e) {}
+                    applyCity(citySlug, cityName);
+                });
         } else {
-            // Standard WP menu click handler
-            $(document).off('click.ecAreasCity').on('click.ecAreasCity', menuSelectors.areas_we_serve + ' .sub-menu a', function (e) {
-                var cityUrl = $(this).attr('href');
-                var citySlug = cityUrl.split('/').filter(Boolean).pop();
-                var cityName = $(this).text();
-
-                // Store city information in sessionStorage for persistence across page loads
-                sessionStorage.setItem('currentCitySlug', citySlug);
-                sessionStorage.setItem('currentCityName', cityName);
-            });
+            // v2: preserve existing standard/Elementor behaviors
+            if (usingElementorMegaMenu) {
+                $(document).off('click.ecAreasCity').on('click.ecAreasCity', menuSelectors.areas_we_serve + ' .elementor-icon-list-items a', function () {
+                    var cityUrl = $(this).attr('href');
+                    var citySlug = cityUrl.split('/').filter(Boolean).pop();
+                    var cityName = $(this).text();
+                    sessionStorage.setItem('currentCitySlug', citySlug);
+                    sessionStorage.setItem('currentCityName', cityName);
+                });
+            } else {
+                $(document).off('click.ecAreasCity').on('click.ecAreasCity', menuSelectors.areas_we_serve + ' .sub-menu a', function () {
+                    var cityUrl = $(this).attr('href');
+                    var citySlug = cityUrl.split('/').filter(Boolean).pop();
+                    var cityName = $(this).text();
+                    sessionStorage.setItem('currentCitySlug', citySlug);
+                    sessionStorage.setItem('currentCityName', cityName);
+                });
+            }
         }
 
-        // Convert practice areas menu item to a dropdown menu
-        $practiceAreasMenu.each(function () {
-            var $this = $(this);
-
-            // Only make changes if this menu item doesn't already have necessary classes
-            if (!$this.hasClass('menu-item-has-children')) {
-                // Add necessary classes for dropdown functionality
-                $this.addClass('menu-item-has-children');
-            }
-        });
+        // Convert practice areas menu item to a dropdown menu (v2 only)
+        if (!isV3 && !usingElementorMegaMenu) {
+            $practiceAreasMenu.each(function () {
+                var $this = $(this);
+                if (!$this.hasClass('menu-item-has-children')) {
+                    $this.addClass('menu-item-has-children');
+                }
+            });
+        }
 
         // Check if we're in the mobile menu context
         var $mobileMenu = $('.elementor-nav-menu--dropdown');
@@ -162,14 +328,15 @@
             }
         }
 
-        // Handle hover on practice areas menu for non-city pages
-        $(document).off('mouseenter.ecDynamicPA', menuSelectors.practice_areas).on('mouseenter.ecDynamicPA', menuSelectors.practice_areas, function () {
-            if (currentCitySlug) {
-                return;
-            }
-            // If not on a city page, make sure the original menu is shown
-            restoreOriginalPracticeAreasMenu();
-        });
+        // Handle hover on practice areas menu for non-city pages (v2 only)
+        if (!isV3 && !usingElementorMegaMenu) {
+            $(document).off('mouseenter.ecDynamicPA', menuSelectors.practice_areas).on('mouseenter.ecDynamicPA', menuSelectors.practice_areas, function () {
+                if (currentCitySlug) {
+                    return;
+                }
+                restoreOriginalPracticeAreasMenu();
+            });
+        }
 
         // Add this CSS to your theme or Elementor custom CSS (inject once)
         if (!document.getElementById('ec-dynamic-menu-styles')) {
@@ -186,7 +353,8 @@
             document.head.appendChild(styleTag);
         }
 
-        // Use event delegation to handle clicks on the Practice Areas menu item (li or a)
+        // Use event delegation to handle clicks on the Practice Areas menu item (li or a) (v2 mobile only)
+        if (!isV3) {
         $(document).off('click.ecMobilePA', '.elementor-nav-menu--dropdown .menu-item-practice-areas').on('click.ecMobilePA', '.elementor-nav-menu--dropdown .menu-item-practice-areas', function (e) {
             // If clicking a submenu link, let it proceed normally
             if ($(e.target).closest('.sub-menu').length) {
@@ -248,22 +416,54 @@
                 }
             }
         });
+        }
     });
 
-    // Elementor v3+ lifecycle hooks to keep bindings fresh
+    // Elementor v3+ lifecycle hooks: align with stable reference tryInitV3
     $(window).on('elementor/frontend/init', function () {
+        var selectors = detectMenuSelectors();
+        if (!selectors.isV3) {
+            scheduleDynamicMenuRefresh();
+            return;
+        }
         if (window.elementorFrontend && window.elementorFrontend.hooks) {
             try {
-                elementorFrontend.hooks.addAction('frontend/element_ready/global', scheduleDynamicMenuRefresh);
-                elementorFrontend.hooks.addAction('frontend/element_ready/nav-menu.default', scheduleDynamicMenuRefresh);
+                elementorFrontend.hooks.addAction('frontend/element_ready/global', tryInitV3);
+                elementorFrontend.hooks.addAction('frontend/element_ready/nav-menu.default', tryInitV3);
             } catch (e) {}
         }
-        setTimeout(scheduleDynamicMenuRefresh, 50);
-        setTimeout(scheduleDynamicMenuRefresh, 250);
-        setTimeout(scheduleDynamicMenuRefresh, 1000);
+        setTimeout(tryInitV3, 50);
+        setTimeout(tryInitV3, 250);
+        setTimeout(tryInitV3, 1000);
     });
 
-    $(window).on('load', scheduleDynamicMenuRefresh);
+    $(function () {
+        var selectors = detectMenuSelectors();
+        if (selectors.isV3) {
+            tryInitV3();
+        } else {
+            scheduleDynamicMenuRefresh();
+        }
+    });
+    $(window).on('load', function () {
+        var selectors = detectMenuSelectors();
+        if (selectors.isV3) {
+            tryInitV3();
+        } else {
+            scheduleDynamicMenuRefresh();
+        }
+    });
+    try {
+        var ecV3Mo = new MutationObserver(function () {
+            var selectors = detectMenuSelectors();
+            if (selectors.isV3) {
+                tryInitV3();
+            } else {
+                scheduleDynamicMenuRefresh();
+            }
+        });
+        ecV3Mo.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
 
     /**
      * Load practice areas for the default city
@@ -614,7 +814,13 @@
         // Detect whether we’re using the Elementor mega-menu
         var usingElementorMegaMenu = $('.e-n-menu').length > 0;
 
-        // Fetch the practice areas from WP REST
+        // For Elementor v3 mega-menu, use stable applyCity rewriting instead of rebuilding via AJAX
+        if (usingElementorMegaMenu) {
+            applyCity(citySlug, getCityNameBySlug(citySlug));
+            return;
+        }
+
+        // Fetch the practice areas from WP REST for standard menus
         isUpdatingPracticeAreasMenu = true;
         $.ajax({
             url: dynamicMenuData.ajaxurl,   // get-practice-areas endpoint
@@ -628,11 +834,7 @@
             },
             success: function (response) {
                 if (response.success && response.practice_areas.length > 0) {
-                    if (usingElementorMegaMenu) {
-                        updateElementorPracticeAreasMenu(response);
-                    } else {
-                        updateStandardPracticeAreasMenu(response);
-                    }
+                    updateStandardPracticeAreasMenu(response);
                 } else {
                     // fallback: clear or restore if no practice areas found
                     restoreOriginalPracticeAreasMenu();
