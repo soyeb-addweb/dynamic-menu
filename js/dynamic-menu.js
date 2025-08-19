@@ -86,11 +86,18 @@
             $practiceAreasMenu = $(dynamicMenuData.menu_selectors.practice_areas);
         }
         var $item = $practiceAreasMenu.closest('.e-n-menu-item').length ? $practiceAreasMenu.closest('.e-n-menu-item') : $practiceAreasMenu;
-        var $contentContainer = $item.find('.e-n-menu-content').first();
-        if (!$contentContainer.length) $contentContainer = $practiceAreasMenu.find('.e-con-inner');
-        if (!$contentContainer.length) $contentContainer = $('#pamenu');
-        if (!$contentContainer.length) $contentContainer = $item.find('.e-con-inner, .elementor-widget-container').first();
-        return $contentContainer;
+        // Prefer the dedicated inner container (#pamenu) if present
+        var $pamenu = $item.find('#pamenu').first();
+        if ($pamenu.length) return $pamenu;
+        // Otherwise target the inner content region inside the toggled content
+        var $inner = $item.find('.e-n-menu-content .e-con-inner').first();
+        if ($inner.length) return $inner;
+        // Fallbacks
+        var $content = $item.find('.e-n-menu-content').first();
+        if ($content.length) return $content;
+        var $globalPamenu = $('#pamenu');
+        if ($globalPamenu.length) return $globalPamenu;
+        return $practiceAreasMenu.find('.e-con-inner').first();
     }
 
     // ---------- URL + data helpers ----------
@@ -280,6 +287,23 @@
         updatePracticeAreasWidget(citySlug, label, ctx.stateSlug || '');
     }
 
+    function observeV3MenuRenderOnce(citySlug, cityName) {
+        var target = document.querySelector('.e-n-menu') || document.body;
+        if (!target) return;
+        var resolved = false;
+        var obs = new MutationObserver(function () {
+            if (resolved) return;
+            var $container = getPracticeAreasContentContainer();
+            if ($container.length) {
+                applyCityRewriteV3(citySlug, cityName);
+                resolved = true;
+                try { obs.disconnect(); } catch (e) {}
+            }
+        });
+        try { obs.observe(target, { childList: true, subtree: true }); } catch (e) {}
+        setTimeout(function () { if (!resolved) { try { obs.disconnect(); } catch (e) {} } }, 3000);
+    }
+
     // ---------- Init ----------
     function init() {
         if (INIT_DONE) return;
@@ -292,7 +316,10 @@
         var chosenName = storedName || getCityNameBySlug(chosenSlug);
 
         if (isV3()) {
-            if (chosenSlug) applyCityRewriteV3(chosenSlug, chosenName);
+            if (chosenSlug) {
+                applyCityRewriteV3(chosenSlug, chosenName);
+                observeV3MenuRenderOnce(chosenSlug, chosenName);
+            }
             // Bind city clicks
             $(document).off('click.ecAreasCityV3').on('click.ecAreasCityV3', (sel.areas_we_serve + ' a'), function () {
                 var href = $(this).attr('href') || '';
@@ -300,13 +327,17 @@
                 var cityName = $.trim($(this).text());
                 if (!citySlug) return;
                 applyCityRewriteV3(citySlug, cityName);
+                observeV3MenuRenderOnce(citySlug, cityName);
             });
             // On Elementor frontend init, re-apply once for late mounts
             $(window).one('elementor/frontend/init', function () {
                 var slug = null, name = null;
                 try { slug = sessionStorage.getItem('currentCitySlug'); name = sessionStorage.getItem('currentCityName'); } catch (e) {}
                 if (!slug) { slug = ((getUrlContext() || {}).citySlug) || (dynamicMenuData && dynamicMenuData.default_city) || ''; name = getCityNameBySlug(slug); }
-                if (slug) applyCityRewriteV3(slug, name);
+                if (slug) {
+                    applyCityRewriteV3(slug, name);
+                    observeV3MenuRenderOnce(slug, name);
+                }
             });
         } else {
             if (chosenSlug) {
