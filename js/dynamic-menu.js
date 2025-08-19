@@ -12,6 +12,143 @@
     var currentCityName = null;
     var currentStateSlug = null;
     var currentPracticeAreaSlug = null;
+    // --- Elementor v3 helpers (from stable reference) ---
+    function parseHref(href) {
+        var a = document.createElement('a');
+        a.href = href || '';
+        var origin = a.protocol && a.host ? (a.protocol + '//' + a.host) : window.location.origin;
+        var pathname = a.pathname || '/';
+        var parts = pathname.split('/').filter(Boolean);
+        var trailingSlash = /\/$/.test(pathname);
+        return {
+            origin: origin,
+            pathname: pathname,
+            parts: parts,
+            trailingSlash: trailingSlash,
+            search: a.search || '',
+            hash: a.hash || ''
+        };
+    }
+    function cityFromCityLink(href) {
+        var p = parseHref(href);
+        if (!p.parts.length) return null;
+        return p.parts[p.parts.length - 1];
+    }
+    function rewritePracticeHrefForCity(href, citySlug) {
+        var p = parseHref(href);
+        if (p.parts.length < 2) return href;
+        p.parts[p.parts.length - 2] = citySlug;
+        var newPath = '/' + p.parts.join('/') + (p.trailingSlash ? '/' : '');
+        var abs = /^https?:\/\//i.test(href || '');
+        return (abs ? p.origin : '') + newPath + p.search + p.hash;
+    }
+    function titleCase(str) {
+        return (str || '')
+            .replace(/[-_]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase()
+            .replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
+    }
+    function $areasTitle() {
+        return $('#menu-item-areas-we-serve, .menu-item-areas-we-serve').first();
+    }
+    function $practiceTitle() {
+        return $('#menu-item-practice-areas, .menu-item-practice-areas').first();
+    }
+    function $practiceTitleText() {
+        var $t = $practiceTitle();
+        return $t.find('.e-n-menu-title-text').length ? $t.find('.e-n-menu-title-text') : $t.find('> a');
+    }
+    function $areasContentRoot() {
+        var $t = $areasTitle();
+        if (!$t.length) return $();
+        var $item = $t.closest('.e-n-menu-item');
+        var $content = $item.find('.e-n-menu-content');
+        if ($content.length) return $content;
+        var $submenu = $item.find('.sub-menu');
+        return $submenu.length ? $submenu : $();
+    }
+    function $practiceContentRoot() {
+        var $t = $practiceTitle();
+        if (!$t.length) return $();
+        var $item = $t.closest('.e-n-menu-item');
+        var $content = $item.find('.e-n-menu-content');
+        if ($content.length) return $content;
+        var $submenu = $item.find('.sub-menu');
+        return $submenu.length ? $submenu : $();
+    }
+    function getCityNameBySlug(citySlug) {
+        if (!citySlug) return '';
+        var cityName = '';
+        if (window.dynamicMenuData && dynamicMenuData.city_pages) {
+            dynamicMenuData.city_pages.forEach(function (city) {
+                if (city.slug === citySlug) {
+                    cityName = city.title;
+                }
+            });
+        }
+        return cityName;
+    }
+    function applyCity(citySlug, cityName) {
+        if (!citySlug) return;
+        var label = (cityName && cityName.trim()) ? cityName : titleCase(citySlug);
+        var menuLabel = label + ' Practice Areas';
+        if (window.dynamicMenuData && dynamicMenuData.uppercase_menu === 'yes') {
+            menuLabel = menuLabel.toUpperCase();
+        }
+        var $txt = $practiceTitleText();
+        if ($txt.length) {
+            $txt.text(menuLabel);
+        }
+        var $root = $practiceContentRoot();
+        $root.find('a[href]').each(function () {
+            var $a = $(this);
+            var href = $a.attr('href');
+            if (!href || /^#|^(mailto|tel):/i.test(href)) return;
+            $a.attr('href', rewritePracticeHrefForCity(href, citySlug));
+        });
+    }
+    function bindCityClicks() {
+        var $root = $areasContentRoot();
+        if (!$root.length) return false;
+        $root.off('click.ecCity').on('click.ecCity', 'a[href]', function () {
+            var $a = $(this);
+            var href = $a.attr('href') || '';
+            var citySlug = cityFromCityLink(href);
+            var cityName = $.trim($a.text());
+            if (!citySlug) return;
+            try {
+                sessionStorage.setItem('currentCitySlug', citySlug);
+                sessionStorage.setItem('currentCityName', cityName);
+            } catch (err) {}
+            applyCity(citySlug, cityName);
+        });
+        return true;
+    }
+    var ecV3Booted = false;
+    function tryInitV3() {
+        var ok = $areasTitle().length && $practiceTitle().length;
+        if (!ok) return false;
+        if (!ecV3Booted) {
+            ecV3Booted = true;
+            bindCityClicks();
+            // apply from storage or URL
+            var slug = null, name = null;
+            try {
+                slug = sessionStorage.getItem('currentCitySlug');
+                name = sessionStorage.getItem('currentCityName');
+            } catch (err) {}
+            if (!slug) {
+                var parts = window.location.pathname.split('/').filter(Boolean);
+                if (parts.length >= 1) {
+                    slug = parts.length >= 2 ? parts[parts.length - 2] : parts[parts.length - 1];
+                }
+            }
+            if (slug) applyCity(slug, name || getCityNameBySlug(slug));
+        }
+        return true;
+    }
     var ecDynamicMenuRefreshTimer = null;
     var lastRelatedWidgetKey = null;
     var lastDetectionKey = null;
@@ -250,20 +387,25 @@
         });
     });
 
-    // Elementor v3+ lifecycle hooks to keep bindings fresh
+    // Elementor v3+ lifecycle hooks: align with stable reference tryInitV3
     $(window).on('elementor/frontend/init', function () {
         if (window.elementorFrontend && window.elementorFrontend.hooks) {
             try {
-                elementorFrontend.hooks.addAction('frontend/element_ready/global', scheduleDynamicMenuRefresh);
-                elementorFrontend.hooks.addAction('frontend/element_ready/nav-menu.default', scheduleDynamicMenuRefresh);
+                elementorFrontend.hooks.addAction('frontend/element_ready/global', tryInitV3);
+                elementorFrontend.hooks.addAction('frontend/element_ready/nav-menu.default', tryInitV3);
             } catch (e) {}
         }
-        setTimeout(scheduleDynamicMenuRefresh, 50);
-        setTimeout(scheduleDynamicMenuRefresh, 250);
-        setTimeout(scheduleDynamicMenuRefresh, 1000);
+        setTimeout(tryInitV3, 50);
+        setTimeout(tryInitV3, 250);
+        setTimeout(tryInitV3, 1000);
     });
 
-    $(window).on('load', scheduleDynamicMenuRefresh);
+    $(function () { tryInitV3(); });
+    $(window).on('load', function () { tryInitV3(); });
+    try {
+        var ecV3Mo = new MutationObserver(function () { tryInitV3(); });
+        ecV3Mo.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
 
     /**
      * Load practice areas for the default city
@@ -614,7 +756,13 @@
         // Detect whether we’re using the Elementor mega-menu
         var usingElementorMegaMenu = $('.e-n-menu').length > 0;
 
-        // Fetch the practice areas from WP REST
+        // For Elementor v3 mega-menu, use stable applyCity rewriting instead of rebuilding via AJAX
+        if (usingElementorMegaMenu) {
+            applyCity(citySlug, getCityNameBySlug(citySlug));
+            return;
+        }
+
+        // Fetch the practice areas from WP REST for standard menus
         isUpdatingPracticeAreasMenu = true;
         $.ajax({
             url: dynamicMenuData.ajaxurl,   // get-practice-areas endpoint
@@ -628,11 +776,7 @@
             },
             success: function (response) {
                 if (response.success && response.practice_areas.length > 0) {
-                    if (usingElementorMegaMenu) {
-                        updateElementorPracticeAreasMenu(response);
-                    } else {
-                        updateStandardPracticeAreasMenu(response);
-                    }
+                    updateStandardPracticeAreasMenu(response);
                 } else {
                     // fallback: clear or restore if no practice areas found
                     restoreOriginalPracticeAreasMenu();
