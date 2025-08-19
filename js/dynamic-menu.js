@@ -57,12 +57,14 @@
 
         if (isV3) {
             return {
+                isV3: true,
                 areas_we_serve: '#menu-item-areas-we-serve, .menu-item-areas-we-serve',
                 practice_areas: '#menu-item-practice-areas, .menu-item-practice-areas',
                 practice_title_text: '.e-n-menu-title-text'
             };
         } else {
             return {
+                isV3: false,
                 areas_we_serve: usingElementorMegaMenu ?
                     '#menu-item-areas-we-serve, .e-n-menu-item:contains("AREAS WE SERVE")' :
                     dynamicMenuData.menu_selectors.areas_we_serve,
@@ -215,6 +217,7 @@
 
         // Auto-detect selectors for v2/v3
         var menuSelectors = detectMenuSelectors();
+        var isV3 = !!menuSelectors.isV3;
         var usingElementorMegaMenu = $('.e-n-menu').length > 0;
 
 
@@ -240,24 +243,45 @@
             loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
         }
 
-        // Handle city page link clicks (works for v2 and v3)
-        $(document)
-            .off('click.ecAreasCity')
-            .on('click.ecAreasCity', menuSelectors.areas_we_serve + ' a', function () {
-                var cityUrl = $(this).attr('href') || '';
-                var citySlug = cityFromCityLink(cityUrl);
-                var cityName = $(this).text();
-                if (!citySlug) return;
-                try {
+        // Handle city page link clicks
+        if (isV3) {
+            // v3: simple rewrite and label update
+            $(document)
+                .off('click.ecAreasCity')
+                .on('click.ecAreasCity', menuSelectors.areas_we_serve + ' a', function () {
+                    var cityUrl = $(this).attr('href') || '';
+                    var citySlug = cityFromCityLink(cityUrl);
+                    var cityName = $(this).text();
+                    if (!citySlug) return;
+                    try {
+                        sessionStorage.setItem('currentCitySlug', citySlug);
+                        sessionStorage.setItem('currentCityName', cityName);
+                    } catch (e) {}
+                    applyCity(citySlug, cityName);
+                });
+        } else {
+            // v2: preserve existing standard/Elementor behaviors
+            if (usingElementorMegaMenu) {
+                $(document).off('click.ecAreasCity').on('click.ecAreasCity', menuSelectors.areas_we_serve + ' .elementor-icon-list-items a', function () {
+                    var cityUrl = $(this).attr('href');
+                    var citySlug = cityUrl.split('/').filter(Boolean).pop();
+                    var cityName = $(this).text();
                     sessionStorage.setItem('currentCitySlug', citySlug);
                     sessionStorage.setItem('currentCityName', cityName);
-                } catch (e) {}
-                // Apply immediate v3 link rewrite if present
-                applyCity(citySlug, cityName);
-            });
+                });
+            } else {
+                $(document).off('click.ecAreasCity').on('click.ecAreasCity', menuSelectors.areas_we_serve + ' .sub-menu a', function () {
+                    var cityUrl = $(this).attr('href');
+                    var citySlug = cityUrl.split('/').filter(Boolean).pop();
+                    var cityName = $(this).text();
+                    sessionStorage.setItem('currentCitySlug', citySlug);
+                    sessionStorage.setItem('currentCityName', cityName);
+                });
+            }
+        }
 
         // Convert practice areas menu item to a dropdown menu (v2 only)
-        if (!usingElementorMegaMenu) {
+        if (!isV3 && !usingElementorMegaMenu) {
             $practiceAreasMenu.each(function () {
                 var $this = $(this);
                 if (!$this.hasClass('menu-item-has-children')) {
@@ -305,7 +329,7 @@
         }
 
         // Handle hover on practice areas menu for non-city pages (v2 only)
-        if (!usingElementorMegaMenu) {
+        if (!isV3 && !usingElementorMegaMenu) {
             $(document).off('mouseenter.ecDynamicPA', menuSelectors.practice_areas).on('mouseenter.ecDynamicPA', menuSelectors.practice_areas, function () {
                 if (currentCitySlug) {
                     return;
@@ -330,6 +354,7 @@
         }
 
         // Use event delegation to handle clicks on the Practice Areas menu item (li or a) (v2 mobile only)
+        if (!isV3) {
         $(document).off('click.ecMobilePA', '.elementor-nav-menu--dropdown .menu-item-practice-areas').on('click.ecMobilePA', '.elementor-nav-menu--dropdown .menu-item-practice-areas', function (e) {
             // If clicking a submenu link, let it proceed normally
             if ($(e.target).closest('.sub-menu').length) {
@@ -391,10 +416,16 @@
                 }
             }
         });
+        }
     });
 
     // Elementor v3+ lifecycle hooks: align with stable reference tryInitV3
     $(window).on('elementor/frontend/init', function () {
+        var selectors = detectMenuSelectors();
+        if (!selectors.isV3) {
+            scheduleDynamicMenuRefresh();
+            return;
+        }
         if (window.elementorFrontend && window.elementorFrontend.hooks) {
             try {
                 elementorFrontend.hooks.addAction('frontend/element_ready/global', tryInitV3);
@@ -406,10 +437,31 @@
         setTimeout(tryInitV3, 1000);
     });
 
-    $(function () { tryInitV3(); });
-    $(window).on('load', function () { tryInitV3(); });
+    $(function () {
+        var selectors = detectMenuSelectors();
+        if (selectors.isV3) {
+            tryInitV3();
+        } else {
+            scheduleDynamicMenuRefresh();
+        }
+    });
+    $(window).on('load', function () {
+        var selectors = detectMenuSelectors();
+        if (selectors.isV3) {
+            tryInitV3();
+        } else {
+            scheduleDynamicMenuRefresh();
+        }
+    });
     try {
-        var ecV3Mo = new MutationObserver(function () { tryInitV3(); });
+        var ecV3Mo = new MutationObserver(function () {
+            var selectors = detectMenuSelectors();
+            if (selectors.isV3) {
+                tryInitV3();
+            } else {
+                scheduleDynamicMenuRefresh();
+            }
+        });
         ecV3Mo.observe(document.body, { childList: true, subtree: true });
     } catch (e) {}
 
