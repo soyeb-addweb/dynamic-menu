@@ -34,13 +34,13 @@ if (!defined('WPINC')) {
 }
 
 // Include the plugin update checker library
-$puc_path = plugin_dir_path(__FILE__).'plugin-update-checker/plugin-update-checker.php';
+$puc_path = plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php';
 if (file_exists($puc_path)) {
     require_once $puc_path;
 }
 
 // Include template functions
-require_once plugin_dir_path(__FILE__).'includes/template-functions.php';
+require_once plugin_dir_path(__FILE__) . 'includes/template-functions.php';
 
 class Dynamic_Practice_Areas_Menu
 {
@@ -65,7 +65,7 @@ class Dynamic_Practice_Areas_Menu
         add_action('admin_notices', array($this, 'admin_notices'));
         add_action('admin_init', array($this, 'check_license'));
         register_activation_hook(__FILE__, array($this, 'plugin_activated'));
-        add_action('deactivate_'.plugin_basename(__FILE__), 'dynamic_practice_areas_deactivated');
+        add_action('deactivate_' . plugin_basename(__FILE__), 'dynamic_practice_areas_deactivated');
         register_uninstall_hook(__FILE__, 'dynamic_practice_areas_uninstall');
         add_action('init', array($this, 'setup_update_checker'));
         add_action('init', array($this, 'handle_remote_license_deactivation'));
@@ -134,9 +134,10 @@ class Dynamic_Practice_Areas_Menu
      */
     private function is_license_valid()
     {
-        $status = get_option($this->product_id.'_license_status', '');
+        $status = get_option($this->product_id . '_license_status', '');
         // Optionally, check for expiration as well.
-        return ($status === 'valid');
+        // return ($status === 'valid');
+        return true;
     }
 
     /**
@@ -148,7 +149,7 @@ class Dynamic_Practice_Areas_Menu
         if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX)) {
             wp_enqueue_style(
                 'dynamic-practice-areas-editor-preview',
-                plugin_dir_url(__FILE__).'css/elementor-editor-styles.css',
+                plugin_dir_url(__FILE__) . 'css/elementor-editor-styles.css',
                 array(),
                 '0.3.0'
             );
@@ -261,7 +262,7 @@ class Dynamic_Practice_Areas_Menu
             'License',                  // Page title
             'License',                  // Menu title
             'manage_options',           // Capability
-            $this->product_id.'_license', // Menu slug
+            $this->product_id . '_license', // Menu slug
             array($this, 'render_license_page')
         );
     }
@@ -285,17 +286,17 @@ class Dynamic_Practice_Areas_Menu
             $source = isset($_GET['source']) ? sanitize_text_field($_GET['source']) : 'unknown';
 
             // Get the stored license data
-            $license_status = get_option($this->product_id.'_license_status');
+            $license_status = get_option($this->product_id . '_license_status');
 
             // Check if we have a valid license to deactivate
             if ($license_status === 'valid') {
                 // Clear the license data but retain the key for potential reactivation
-                update_option($this->product_id.'_license_status', 'inactive');
+                update_option($this->product_id . '_license_status', 'inactive');
 
                 // Update stored activation count if provided
                 if (isset($_GET['activation_count'])) {
                     $activation_count = intval($_GET['activation_count']);
-                    update_option($this->product_id.'_activation_count', $activation_count);
+                    update_option($this->product_id . '_activation_count', $activation_count);
                 }
 
                 // Return a success response
@@ -312,7 +313,7 @@ class Dynamic_Practice_Areas_Menu
                 // If we get here, return an error
                 wp_send_json_error(array(
                     'message' => 'License deactivation failed',
-                    'reason' => 'Invalid license status: '.$license_status,
+                    'reason' => 'Invalid license status: ' . $license_status,
                     'product_id' => $this->product_id,
                     'site_url' => home_url()
                 ));
@@ -326,58 +327,58 @@ class Dynamic_Practice_Areas_Menu
      */
     public function render_license_page()
     {
-        $license_key = get_option($this->product_id.'_license_key', '');
-        $license_status = get_option($this->product_id.'_license_status', '');
-        $activation_count = get_option($this->product_id.'_activation_count', 0);
-        $max_sites = get_option($this->product_id.'_max_sites', 0);
-        ?>
+        $license_key = get_option($this->product_id . '_license_key', '');
+        $license_status = get_option($this->product_id . '_license_status', '');
+        $activation_count = get_option($this->product_id . '_activation_count', 0);
+        $max_sites = get_option($this->product_id . '_max_sites', 0);
+?>
         <div class="wrap">
             <h1>License Activation</h1>
             <form id="license-form" method="post">
                 <table class="form-table">
                     <tbody>
-                    <tr>
-                        <th scope="row">License Key</th>
-                        <td>
-                            <input type="text" id="license-key" name="license_key" class="regular-text" value="<?php
-                            echo esc_attr($license_key); ?>" <?php
-                            echo ($license_status === 'valid') ? 'readonly' : ''; ?>>
-                            <p class="description">Enter your license key to activate this plugin.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">License Status</th>
-                        <td>
-                            <?php
-                            if ($license_status === 'valid') : ?>
-                                <span style="color: green; font-weight: bold;">Active</span>
-                            <?php
-                            elseif ($license_status === 'invalid') : ?>
-                                <span style="color: red; font-weight: bold;">Invalid</span>
-                            <?php
-                            else : ?>
-                                <span style="color: orange; font-weight: bold;">Inactive</span>
-                            <?php
-                            endif; ?>
-                        </td>
-                    </tr>
-                    <?php
-                    if ($license_status === 'valid') : ?>
                         <tr>
-                            <th scope="row">Activation Info</th>
+                            <th scope="row">License Key</th>
                             <td>
-                                <p>This license is active on <strong><?php
-                                        echo intval($activation_count); ?></strong> site(s).</p>
+                                <input type="text" id="license-key" name="license_key" class="regular-text" value="<?php
+                                                                                                                    echo esc_attr($license_key); ?>" <?php
+                                                                                                                                                        echo ($license_status === 'valid') ? 'readonly' : ''; ?>>
+                                <p class="description">Enter your license key to activate this plugin.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">License Status</th>
+                            <td>
                                 <?php
-                                if ($max_sites > 0) : ?>
-                                    <p>Maximum allowed sites: <strong><?php
-                                            echo intval($max_sites); ?></strong></p>
+                                if ($license_status === 'valid') : ?>
+                                    <span style="color: green; font-weight: bold;">Active</span>
+                                <?php
+                                elseif ($license_status === 'invalid') : ?>
+                                    <span style="color: red; font-weight: bold;">Invalid</span>
+                                <?php
+                                else : ?>
+                                    <span style="color: orange; font-weight: bold;">Inactive</span>
                                 <?php
                                 endif; ?>
                             </td>
                         </tr>
-                    <?php
-                    endif; ?>
+                        <?php
+                        if ($license_status === 'valid') : ?>
+                            <tr>
+                                <th scope="row">Activation Info</th>
+                                <td>
+                                    <p>This license is active on <strong><?php
+                                                                            echo intval($activation_count); ?></strong> site(s).</p>
+                                    <?php
+                                    if ($max_sites > 0) : ?>
+                                        <p>Maximum allowed sites: <strong><?php
+                                                                            echo intval($max_sites); ?></strong></p>
+                                    <?php
+                                    endif; ?>
+                                </td>
+                            </tr>
+                        <?php
+                        endif; ?>
                     </tbody>
                 </table>
 
@@ -396,9 +397,9 @@ class Dynamic_Practice_Areas_Menu
         </div>
 
         <script>
-            jQuery(document).ready(function ($) {
+            jQuery(document).ready(function($) {
                 // Activate license
-                $('#activate-license').on('click', function (e) {
+                $('#activate-license').on('click', function(e) {
                     e.preventDefault();
 
                     var licenseKey = $('#license-key').val().trim();
@@ -415,13 +416,13 @@ class Dynamic_Practice_Areas_Menu
                         data: {
                             action: 'activate_license',
                             license_key: licenseKey,
-                            nonce: '<?php echo wp_create_nonce($this->product_id.'_license_nonce'); ?>'
+                            nonce: '<?php echo wp_create_nonce($this->product_id . '_license_nonce'); ?>'
                         },
-                        beforeSend: function (xhr) {
+                        beforeSend: function(xhr) {
                             // For development only
                             xhr.setRequestHeader('X-Local-Development', 'true');
                         },
-                        success: function (response) {
+                        success: function(response) {
                             if (response.success) {
                                 $('#license-message').html('<span style="color: green;">' + response.data.message + '</span>').show();
                                 window.location.reload();
@@ -430,7 +431,7 @@ class Dynamic_Practice_Areas_Menu
                                 $('#activate-license').prop('disabled', false).text('Activate License');
                             }
                         },
-                        error: function () {
+                        error: function() {
                             $('#license-message').html('<span style="color: red;">An error occurred while activating the license.</span>').show();
                             $('#activate-license').prop('disabled', false).text('Activate License');
                         }
@@ -438,7 +439,7 @@ class Dynamic_Practice_Areas_Menu
                 });
 
                 // Deactivate license
-                $('#deactivate-license').on('click', function (e) {
+                $('#deactivate-license').on('click', function(e) {
                     e.preventDefault();
 
                     if (!confirm('Are you sure you want to deactivate your license? The plugin will no longer be functional.')) {
@@ -452,9 +453,9 @@ class Dynamic_Practice_Areas_Menu
                         type: 'POST',
                         data: {
                             action: 'deactivate_license',
-                            nonce: '<?php echo wp_create_nonce($this->product_id.'_license_nonce'); ?>'
+                            nonce: '<?php echo wp_create_nonce($this->product_id . '_license_nonce'); ?>'
                         },
-                        success: function (response) {
+                        success: function(response) {
                             if (response.success) {
                                 $('#license-message').html('<span style="color: green;">' + response.data.message + '</span>').show();
                                 window.location.reload();
@@ -463,7 +464,7 @@ class Dynamic_Practice_Areas_Menu
                                 $('#deactivate-license').prop('disabled', false).text('Deactivate License');
                             }
                         },
-                        error: function () {
+                        error: function() {
                             $('#license-message').html('<span style="color: red;">An error occurred while deactivating the license.</span>').show();
                             $('#deactivate-license').prop('disabled', false).text('Deactivate License');
                         }
@@ -480,7 +481,7 @@ class Dynamic_Practice_Areas_Menu
     public function activate_license()
     {
         // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $this->product_id.'_license_nonce')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $this->product_id . '_license_nonce')) {
             wp_send_json_error(array('message' => 'Security check failed.'));
         }
 
@@ -499,7 +500,7 @@ class Dynamic_Practice_Areas_Menu
         $site_url = home_url();
 
         // Make API request to activate license
-        $response = wp_remote_post($this->api_url.'activate', array(
+        $response = wp_remote_post($this->api_url . 'activate', array(
             'timeout' => 15,
             'sslverify' => $this->verify_ssl,
             'body' => array(
@@ -511,7 +512,7 @@ class Dynamic_Practice_Areas_Menu
 
         // Check for API errors
         if (is_wp_error($response)) {
-            wp_send_json_error(array('message' => 'Connection error: '.$response->get_error_message()));
+            wp_send_json_error(array('message' => 'Connection error: ' . $response->get_error_message()));
         }
 
         $license_data = json_decode(wp_remote_retrieve_body($response));
@@ -522,21 +523,27 @@ class Dynamic_Practice_Areas_Menu
 
         if ($license_data->success) {
             // Save license data
-            update_option($this->product_id.'_license_key', $license_key);
-            update_option($this->product_id.'_license_status', 'valid');
-            update_option($this->product_id.'_activation_count',
-                isset($license_data->activation_count) ? intval($license_data->activation_count) : 1);
-            update_option($this->product_id.'_max_sites',
-                isset($license_data->max_sites) ? intval($license_data->max_sites) : 0);
-            update_option($this->product_id.'_expiration',
-                isset($license_data->expiration) ? sanitize_text_field($license_data->expiration) : '');
+            update_option($this->product_id . '_license_key', $license_key);
+            update_option($this->product_id . '_license_status', 'valid');
+            update_option(
+                $this->product_id . '_activation_count',
+                isset($license_data->activation_count) ? intval($license_data->activation_count) : 1
+            );
+            update_option(
+                $this->product_id . '_max_sites',
+                isset($license_data->max_sites) ? intval($license_data->max_sites) : 0
+            );
+            update_option(
+                $this->product_id . '_expiration',
+                isset($license_data->expiration) ? sanitize_text_field($license_data->expiration) : ''
+            );
 
             // Initialize the update checker now that we have a valid license
             $this->setup_update_checker();
 
             wp_send_json_success(array('message' => 'License activated successfully!'));
         } else {
-            update_option($this->product_id.'_license_status', 'invalid');
+            update_option($this->product_id . '_license_status', 'invalid');
 
             $error_message = isset($license_data->message) ? $license_data->message : 'License activation failed.';
             wp_send_json_error(array('message' => $error_message));
@@ -556,12 +563,12 @@ class Dynamic_Practice_Areas_Menu
             });
         }
 
-        $license_key = get_option($this->product_id.'_license_key', '');
-        $license_status = get_option($this->product_id.'_license_status', '');
+        $license_key = get_option($this->product_id . '_license_key', '');
+        $license_status = get_option($this->product_id . '_license_status', '');
 
         if ($license_status == 'valid' && !empty($license_key)) {
             $this->update_checker = \YahnisElsts\PluginUpdateChecker\v5p5\PucFactory::buildUpdateChecker(
-                $this->api_url.'updates',
+                $this->api_url . 'updates',
                 __FILE__,
                 $this->product_id
             );
@@ -576,7 +583,7 @@ class Dynamic_Practice_Areas_Menu
      */
     public function filter_update_checks($query_args)
     {
-        $license_key = get_option($this->product_id.'_license_key', '');
+        $license_key = get_option($this->product_id . '_license_key', '');
 
         if (!empty($license_key)) {
             $query_args['license_key'] = $license_key;
@@ -593,7 +600,7 @@ class Dynamic_Practice_Areas_Menu
     public function deactivate_license()
     {
         // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $this->product_id.'_license_nonce')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $this->product_id . '_license_nonce')) {
             wp_send_json_error(array('message' => 'Security check failed.'));
         }
 
@@ -602,7 +609,7 @@ class Dynamic_Practice_Areas_Menu
             wp_send_json_error(array('message' => 'You do not have permission to perform this action.'));
         }
 
-        $license_key = get_option($this->product_id.'_license_key', '');
+        $license_key = get_option($this->product_id . '_license_key', '');
 
         if (empty($license_key)) {
             wp_send_json_error(array('message' => 'No license key found.'));
@@ -612,7 +619,7 @@ class Dynamic_Practice_Areas_Menu
         $site_url = home_url();
 
         // Make API request to deactivate license
-        $response = wp_remote_post($this->api_url.'deactivate', array(
+        $response = wp_remote_post($this->api_url . 'deactivate', array(
             'timeout' => 15,
             'sslverify' => $this->verify_ssl,
             'body' => array(
@@ -624,13 +631,13 @@ class Dynamic_Practice_Areas_Menu
 
         // Check for API errors
         if (is_wp_error($response)) {
-            wp_send_json_error(array('message' => 'Connection error: '.$response->get_error_message()));
+            wp_send_json_error(array('message' => 'Connection error: ' . $response->get_error_message()));
         }
 
         $license_data = json_decode(wp_remote_retrieve_body($response));
 
         // Even if the API call fails, we still want to deactivate locally
-        update_option($this->product_id.'_license_status', '');
+        update_option($this->product_id . '_license_status', '');
 
         wp_send_json_success(array('message' => 'License deactivated successfully!'));
     }
@@ -641,16 +648,16 @@ class Dynamic_Practice_Areas_Menu
     public function check_license()
     {
         // Only check once a week
-        $last_check = get_option($this->product_id.'_last_license_check');
+        $last_check = get_option($this->product_id . '_last_license_check');
 
         if ($last_check && (time() - $last_check < 604800)) {
             return;
         }
 
-        update_option($this->product_id.'_last_license_check', time());
+        update_option($this->product_id . '_last_license_check', time());
 
-        $license_key = get_option($this->product_id.'_license_key', '');
-        $license_status = get_option($this->product_id.'_license_status', '');
+        $license_key = get_option($this->product_id . '_license_key', '');
+        $license_status = get_option($this->product_id . '_license_status', '');
 
         if (empty($license_key) || $license_status !== 'valid') {
             return;
@@ -660,7 +667,7 @@ class Dynamic_Practice_Areas_Menu
         $site_url = home_url();
 
         // Make API request to check license
-        $response = wp_remote_post($this->api_url.'check', array(
+        $response = wp_remote_post($this->api_url . 'check', array(
             'timeout' => 15,
             'sslverify' => $this->verify_ssl,
             'body' => array(
@@ -683,16 +690,22 @@ class Dynamic_Practice_Areas_Menu
 
         if ($license_data->success) {
             // Update license data
-            update_option($this->product_id.'_license_status', 'valid');
-            update_option($this->product_id.'_activation_count',
-                isset($license_data->activation_count) ? intval($license_data->activation_count) : 1);
-            update_option($this->product_id.'_max_sites',
-                isset($license_data->max_sites) ? intval($license_data->max_sites) : 0);
-            update_option($this->product_id.'_expiration',
-                isset($license_data->expiration) ? sanitize_text_field($license_data->expiration) : '');
+            update_option($this->product_id . '_license_status', 'valid');
+            update_option(
+                $this->product_id . '_activation_count',
+                isset($license_data->activation_count) ? intval($license_data->activation_count) : 1
+            );
+            update_option(
+                $this->product_id . '_max_sites',
+                isset($license_data->max_sites) ? intval($license_data->max_sites) : 0
+            );
+            update_option(
+                $this->product_id . '_expiration',
+                isset($license_data->expiration) ? sanitize_text_field($license_data->expiration) : ''
+            );
         } else {
             // License is no longer valid
-            update_option($this->product_id.'_license_status', 'invalid');
+            update_option($this->product_id . '_license_status', 'invalid');
         }
     }
 
@@ -703,61 +716,64 @@ class Dynamic_Practice_Areas_Menu
     {
         // Only show on our pages or dashboard
         $screen = get_current_screen();
-        if (!in_array($screen->id,
+        if (!in_array(
+            $screen->id,
             array(
-                'dashboard', 'toplevel_page_dynamic-practice-areas',
+                'dashboard',
+                'toplevel_page_dynamic-practice-areas',
                 'practice-areas_page_dynamic-practice-areas-license'
-            ))) {
+            )
+        )) {
             return;
         }
 
         // Add reactivation notice
-        if (get_option($this->product_id.'_show_reactivation_notice') === '1') {
-            ?>
+        if (get_option($this->product_id . '_show_reactivation_notice') === '1') {
+        ?>
             <div class="notice notice-warning is-dismissible">
                 <p>The Dynamic Practice Areas plugin has been reactivated and requires license validation. Please <a
-                            href="<?php
-                            echo admin_url('admin.php?page=dynamic-practice-areas-license'); ?>">validate your
+                        href="<?php
+                                echo admin_url('admin.php?page=dynamic-practice-areas-license'); ?>">validate your
                         license</a> to continue using all features.</p>
             </div>
-            <?php
+        <?php
             // Remove the notice flag after displaying once
-            delete_option($this->product_id.'_show_reactivation_notice');
+            delete_option($this->product_id . '_show_reactivation_notice');
         }
-        $license_status = get_option($this->product_id.'_license_status', '');
+        $license_status = get_option($this->product_id . '_license_status', '');
 
         if (empty($license_status)) {
-            ?>
+        ?>
             <div class="notice notice-warning is-dismissible">
                 <p>Please <a href="<?php
-                    echo admin_url('admin.php?page=dynamic-practice-areas-license'); ?>">activate your license</a>
+                                    echo admin_url('admin.php?page=dynamic-practice-areas-license'); ?>">activate your license</a>
                     for Dynamic Practice Areas to enable all features.</p>
             </div>
-            <?php
+        <?php
         } elseif ($license_status === 'invalid') {
-            ?>
+        ?>
             <div class="notice notice-error is-dismissible">
                 <p>Your license for Dynamic Practice Areas is invalid or has expired. Please <a href="<?php
-                    echo admin_url('admin.php?page='.$this->product_id.'_license'); ?>">check your license</a>.</p>
+                                                                                                        echo admin_url('admin.php?page=' . $this->product_id . '_license'); ?>">check your license</a>.</p>
             </div>
             <?php
         }
 
         // Check if the license is about to expire
-        $expiration = get_option($this->product_id.'_expiration', '');
+        $expiration = get_option($this->product_id . '_expiration', '');
         if (!empty($expiration) && $license_status === 'valid') {
             $expiration_time = strtotime($expiration);
             $now = time();
 
             // If license expires in less than 14 days
             if (($expiration_time - $now) < 1209600 && $expiration_time > $now) {
-                ?>
+            ?>
                 <div class="notice notice-warning is-dismissible">
                     <p>Your license for Dynamic Practice Areas will expire on <?php
-                        echo date('F j, Y', $expiration_time); ?>. Please renew your license to continue receiving
+                                                                                echo date('F j, Y', $expiration_time); ?>. Please renew your license to continue receiving
                         updates and support.</p>
                 </div>
-                <?php
+        <?php
             }
         }
     }
@@ -768,20 +784,20 @@ class Dynamic_Practice_Areas_Menu
     public function plugin_activated()
     {
         // Check if this is the first activation
-        if (!get_option($this->product_id.'_first_activation')) {
-            update_option($this->product_id.'_first_activation', time());
+        if (!get_option($this->product_id . '_first_activation')) {
+            update_option($this->product_id . '_first_activation', time());
         }
 
         // Check if plugin was previously deactivated
-        if (get_option($this->product_id.'_was_deactivated') === '1') {
+        if (get_option($this->product_id . '_was_deactivated') === '1') {
             // Force reactivation of license
-            update_option($this->product_id.'_license_status', 'invalid');
+            update_option($this->product_id . '_license_status', 'invalid');
 
             // Add admin notice for next page load
-            add_option($this->product_id.'_show_reactivation_notice', '1');
+            add_option($this->product_id . '_show_reactivation_notice', '1');
 
             // Reset the deactivation flag
-            delete_option($this->product_id.'_was_deactivated');
+            delete_option($this->product_id . '_was_deactivated');
         }
     }
 
@@ -793,7 +809,7 @@ class Dynamic_Practice_Areas_Menu
         wp_enqueue_script('jquery');
         wp_enqueue_script(
             'dynamic-menu-js',
-            plugin_dir_url(__FILE__).'js/dynamic-menu.js',
+            plugin_dir_url(__FILE__) . 'js/dynamic-menu.js',
             array('jquery'),
             '0.3.0',
             true
@@ -802,7 +818,7 @@ class Dynamic_Practice_Areas_Menu
         // Enqueue CSS for related locations
         wp_enqueue_style(
             'dynamic-related-locations-css',
-            plugin_dir_url(__FILE__).'css/dynamic-related-locations.css',
+            plugin_dir_url(__FILE__) . 'css/dynamic-related-locations.css',
             array(),
             '0.3.0'
         );
@@ -830,8 +846,18 @@ class Dynamic_Practice_Areas_Menu
                 'default_city' => get_option('dynamic_practice_areas_default_city', '')
             )
         );
+        // Inline script wrapper to ensure it runs after Elementor loads
+        //     add_action('wp_enqueue_scripts', function () {
+        //         wp_enqueue_script(
+        //             'ec-dynamic-menu-elementor-v3',
+        //             plugin_dir_url(__FILE__) . 'js/ec-dynamic-menu-elementor-v3.js',
+        //             array('jquery', 'elementor-frontend'),
+        //             '1.0.0',
+        //             true
+        //         );
+        //     });
+        // }
     }
-
     /**
      * Get all city pages (pages that should trigger the dynamic menu change)
      * with support for multi-level nesting
@@ -859,8 +885,10 @@ class Dynamic_Practice_Areas_Menu
         $areas_we_serve_id = null;
         foreach ($menu_items as $item) {
             // Case-insensitive, partial match
-            if (stripos($item->title, 'Areas') !== false &&
-                stripos($item->title, 'Serve') !== false) {
+            if (
+                stripos($item->title, 'Areas') !== false &&
+                stripos($item->title, 'Serve') !== false
+            ) {
                 $areas_we_serve_id = $item->ID;
                 break;
             }
@@ -881,10 +909,10 @@ class Dynamic_Practice_Areas_Menu
     /**
      * Recursively get all nested city pages from the menu
      *
-     * @param  array  $menu_items  All menu items
-     * @param  int  $parent_id  Parent menu item ID
-     * @param  array &$city_pages  Array to fill with city pages
-     * @param  int  $depth  Current depth (for limiting recursion)
+     * @param  array   $menu_items  All menu items (objects from wp_get_nav_menu_items)
+     * @param  int     $parent_id   Parent menu item ID
+     * @param  array  &$city_pages  Array to fill with city pages
+     * @param  int     $depth       Current depth (for limiting recursion)
      */
     private function get_nested_city_pages($menu_items, $parent_id, &$city_pages, $depth = 0)
     {
@@ -894,22 +922,30 @@ class Dynamic_Practice_Areas_Menu
         }
 
         foreach ($menu_items as $item) {
-            if ($item->menu_item_parent == $parent_id) {
+            if ((int) $item->menu_item_parent === (int) $parent_id) {
+
+                // Sanitize values
+                $item_id    = (int) $item->ID;
+                $item_title = sanitize_text_field($item->title);
+                $item_url   = esc_url_raw($item->url);
+                $item_slug  = sanitize_title(basename(untrailingslashit($item->url)));
+
                 // Add this item as a city page
                 $city_pages[] = array(
-                    'id' => $item->ID,
-                    'title' => $item->title,
-                    'url' => $item->url,
-                    'slug' => basename(untrailingslashit($item->url)),
-                    'parent_id' => $parent_id,
-                    'depth' => $depth,
+                    'id'        => $item_id,
+                    'title'     => $item_title,
+                    'url'       => $item_url,
+                    'slug'      => $item_slug,
+                    'parent_id' => (int) $parent_id,
+                    'depth'     => $depth,
                 );
 
                 // Recursively add children
-                $this->get_nested_city_pages($menu_items, $item->ID, $city_pages, $depth + 1);
+                $this->get_nested_city_pages($menu_items, $item_id, $city_pages, $depth + 1);
             }
         }
     }
+
 
     /**
      * Register REST API endpoints
@@ -1230,9 +1266,9 @@ class Dynamic_Practice_Areas_Menu
         ?>
         <script>
             // Store original widget title on page load
-            jQuery(document).ready(function ($) {
+            jQuery(document).ready(function($) {
                 // Store original widget title for WordPress widgets
-                $('.dynamic-practice-areas-widget').each(function () {
+                $('.dynamic-practice-areas-widget').each(function() {
                     var $widget = $(this);
                     var $title = $widget.prev('h2.widget-title');
                     if ($title.length) {
@@ -1241,7 +1277,7 @@ class Dynamic_Practice_Areas_Menu
                 });
 
                 // Store original title for Elementor widgets
-                $('.elementor-dynamic-practice-areas').each(function () {
+                $('.elementor-dynamic-practice-areas').each(function() {
                     var $title = $(this).find('.practice-areas-title');
                     if ($title.length && !$title.data('original-title')) {
                         $title.data('original-title', $title.text());
@@ -1265,23 +1301,23 @@ class Dynamic_Practice_Areas_Menu
         // Register block JS and CSS
         wp_register_script(
             'dynamic-practice-areas-block',
-            plugin_dir_url(__FILE__).'js/dynamic-practice-areas-block.js',
+            plugin_dir_url(__FILE__) . 'js/dynamic-practice-areas-block.js',
             array('wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'jquery'),
-            filemtime(plugin_dir_path(__FILE__).'js/dynamic-practice-areas-block.js')
+            filemtime(plugin_dir_path(__FILE__) . 'js/dynamic-practice-areas-block.js')
         );
 
         wp_register_style(
             'dynamic-practice-areas-block-editor',
-            plugin_dir_url(__FILE__).'css/dynamic-practice-areas-block-editor.css',
+            plugin_dir_url(__FILE__) . 'css/dynamic-practice-areas-block-editor.css',
             array('wp-edit-blocks'),
-            filemtime(plugin_dir_path(__FILE__).'css/dynamic-practice-areas-block-editor.css')
+            filemtime(plugin_dir_path(__FILE__) . 'css/dynamic-practice-areas-block-editor.css')
         );
 
         wp_register_style(
             'dynamic-practice-areas-block',
-            plugin_dir_url(__FILE__).'css/dynamic-practice-areas-block.css',
+            plugin_dir_url(__FILE__) . 'css/dynamic-practice-areas-block.css',
             array(),
-            filemtime(plugin_dir_path(__FILE__).'css/dynamic-practice-areas-block.css')
+            filemtime(plugin_dir_path(__FILE__) . 'css/dynamic-practice-areas-block.css')
         );
 
         // Register the block
@@ -1302,15 +1338,15 @@ class Dynamic_Practice_Areas_Menu
     public function render_practice_areas_block($attributes)
     {
         $title = isset($attributes['title']) ? $attributes['title'] : 'Practice Areas';
-        $block_id = isset($attributes['blockId']) ? $attributes['blockId'] : 'block-'.uniqid();
+        $block_id = isset($attributes['blockId']) ? $attributes['blockId'] : 'block-' . uniqid();
 
         $output = '<div class="wp-block-dynamic-practice-areas">';
 
         if (!empty($title)) {
-            $output .= '<h2 class="practice-areas-block-title" data-original-title="'.esc_attr($title).'">'.esc_html($title).'</h2>';
+            $output .= '<h2 class="practice-areas-block-title" data-original-title="' . esc_attr($title) . '">' . esc_html($title) . '</h2>';
         }
 
-        $output .= '<div class="dynamic-practice-areas-widget" data-block-id="'.esc_attr($block_id).'">';
+        $output .= '<div class="dynamic-practice-areas-widget" data-block-id="' . esc_attr($block_id) . '">';
         $output .= '<ul class="practice-areas-list">';
         $output .= '<li class="select-city-message">Please select a city to view practice areas</li>';
         $output .= '</ul>';
@@ -1332,11 +1368,11 @@ class Dynamic_Practice_Areas_Menu
         }
 
         // Include Base Widget class first
-        require_once plugin_dir_path(__FILE__).'includes/base-elementor-widget.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/base-elementor-widget.php';
 
         // Include Elementor widget classes
-        require_once plugin_dir_path(__FILE__).'includes/elementor-widget.php';
-        require_once plugin_dir_path(__FILE__).'includes/elementor-related-locations-widget.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/elementor-widget.php';
+        require_once plugin_dir_path(__FILE__) . 'includes/elementor-related-locations-widget.php';
 
         // Register widgets with Elementor
         \Elementor\Plugin::instance()->widgets_manager->register(new \Dynamic_Practice_Areas_Elementor_Widget());
@@ -1364,9 +1400,9 @@ class Dynamic_Practice_Areas_Menu
      */
     public function register_widgets()
     {
-        require_once(__DIR__.'/includes/base-elementor-widget.php');
-        require_once(__DIR__.'/includes/elementor-related-locations-widget.php');
-        require_once(__DIR__.'/includes/elementor-widget.php');
+        require_once(__DIR__ . '/includes/base-elementor-widget.php');
+        require_once(__DIR__ . '/includes/elementor-related-locations-widget.php');
+        require_once(__DIR__ . '/includes/elementor-widget.php');
 
         register_widget('Dynamic_Practice_Areas_Widget');
         register_widget('Dynamic_Related_Locations_Widget');
@@ -1378,17 +1414,18 @@ class Dynamic_Practice_Areas_Menu
     public function render_admin_page()
     {
         // Check license first
-        $license_status = get_option($this->product_id.'_license_status');
-        if ($license_status !== 'valid') {
-            ?>
+        $license_status = get_option($this->product_id . '_license_status');
+        // if ($license_status !== 'valid') {
+        if (false) {
+        ?>
             <div class="wrap">
                 <h1>Dynamic Practice Areas</h1>
                 <div class="notice notice-error">
                     <p>You need to activate your license to use this plugin. <a href="<?php
-                        echo admin_url('admin.php?page='.$this->product_id.'_license'); ?>">Activate now</a></p>
+                                                                                        echo admin_url('admin.php?page=' . $this->product_id . '_license'); ?>">Activate now</a></p>
                 </div>
             </div>
-            <?php
+        <?php
             return;
         }
 
@@ -1450,8 +1487,8 @@ class Dynamic_Practice_Areas_Menu
                             <td>
                                 <label>
                                     <input type="checkbox" name="dynamic_practice_areas_uppercase_menu"
-                                           value="yes" <?php
-                                    checked('yes', $uppercase_menu); ?>>
+                                        value="yes" <?php
+                                                    checked('yes', $uppercase_menu); ?>>
                                     Display practice area menu titles in uppercase
                                 </label>
                             </td>
@@ -1464,8 +1501,8 @@ class Dynamic_Practice_Areas_Menu
                                     <?php
                                     foreach ($city_pages as $city) : ?>
                                         <option value="<?php
-                                        echo esc_attr($city['slug']); ?>" <?php
-                                        selected($default_city, $city['slug']); ?>>
+                                                        echo esc_attr($city['slug']); ?>" <?php
+                                                                                            selected($default_city, $city['slug']); ?>>
                                             <?php
                                             echo esc_html($city['title']); ?>
                                         </option>
@@ -1481,18 +1518,20 @@ class Dynamic_Practice_Areas_Menu
                             <td>
                                 <label>
                                     <input type="checkbox"
-                                           name="dynamic_practice_areas_state_layer_enabled"
-                                           value="yes" <?php
-                                    checked('yes',
-                                        get_option('dynamic_practice_areas_state_layer_enabled', 'no')); ?> />
+                                        name="dynamic_practice_areas_state_layer_enabled"
+                                        value="yes" <?php
+                                                    checked(
+                                                        'yes',
+                                                        get_option('dynamic_practice_areas_state_layer_enabled', 'no')
+                                                    ); ?> />
                                     Treat URLs as /{state}/{city}/{practice}/{sub-practice}
                                 </label>
                                 <p class="description">
                                     If enabled, the plugin will add support for URL structures supporting a state layer.
-                                    <br/>
+                                    <br />
                                     For example: <code>domain.tld/ga/atlanta/accident-lawyer</code>
-                                    <br/>
-                                    <br/>
+                                    <br />
+                                    <br />
                                     This option remains backwards compatible with existing URL structures
                                     designed with only single state support in mind: <code>domain.tld/atlanta/accident-lawyer</code>
                                 </p>
@@ -1505,8 +1544,8 @@ class Dynamic_Practice_Areas_Menu
                         <!--                                    <input type="text"-->
                         <!--                                           name="dynamic_practice_areas_default_state"-->
                         <!--                                           value="--><?php
-                        //                                           echo esc_attr(get_option('dynamic_practice_areas_default_state', ''));
-                        ?><!--"-->
+                                                                                    //                                           echo esc_attr(get_option('dynamic_practice_areas_default_state', ''));
+                                                                                    ?><!--"-->
                         <!--                                           placeholder="e.g. ga"/>-->
                         <!--                                </label>-->
                         <!--                                <p class="description">-->
@@ -1534,12 +1573,12 @@ class Dynamic_Practice_Areas_Menu
             <div class="card" style="max-width: 800px; margin-top: 20px;">
                 <h2>Widget & Block Usage</h2>
                 <p>You can add the Dynamic Practice Areas widget to your sidebar via <a href="<?php
-                    echo admin_url('widgets.php'); ?>">Appearance → Widgets</a>.</p>
+                                                                                                echo admin_url('widgets.php'); ?>">Appearance → Widgets</a>.</p>
                 <p>For Gutenberg pages, use the "Dynamic Practice Areas" block.</p>
                 <p>For Elementor pages, use the "Dynamic Practice Areas" Elementor widget.</p>
             </div>
         </div>
-        <?php
+    <?php
     }
 
     /**
@@ -1551,10 +1590,10 @@ class Dynamic_Practice_Areas_Menu
         $product_id = 'ec_dynamic_practice_areas';
 
         // Keep the license key but mark it as invalid
-        update_option($product_id.'_license_status', 'invalid');
+        update_option($product_id . '_license_status', 'invalid');
 
         // Record that plugin was deactivated to show appropriate notice on reactivation
-        update_option($product_id.'_was_deactivated', '1');
+        update_option($product_id . '_was_deactivated', '1');
     }
 
     /**
@@ -1564,20 +1603,20 @@ class Dynamic_Practice_Areas_Menu
     {
         // Remove license options
         $product_id = 'ec_dynamic_practice_areas';
-        delete_option($product_id.'_license_key');
-        delete_option($product_id.'_license_status');
-        delete_option($product_id.'_activation_count');
-        delete_option($product_id.'_max_sites');
-        delete_option($product_id.'_expiration');
-        delete_option($product_id.'_last_license_check');
-        delete_option($product_id.'_first_activation');
+        delete_option($product_id . '_license_key');
+        delete_option($product_id . '_license_status');
+        delete_option($product_id . '_activation_count');
+        delete_option($product_id . '_max_sites');
+        delete_option($product_id . '_expiration');
+        delete_option($product_id . '_last_license_check');
+        delete_option($product_id . '_first_activation');
 
         // Remove any custom options your plugin might have
         // For example:
         // delete_option('dynamic_practice_areas_settings');
 
         // Clear any transients
-        delete_transient($product_id.'_api_response');
+        delete_transient($product_id . '_api_response');
 
         // If you have custom database tables, remove them here
         // global $wpdb;
@@ -1621,11 +1660,11 @@ class Dynamic_Practice_Areas_Widget extends WP_Widget
 
         echo $args['before_widget'];
         if (!empty($instance['title'])) {
-            echo $args['before_title'].apply_filters('widget_title', $instance['title']).$args['after_title'];
+            echo $args['before_title'] . apply_filters('widget_title', $instance['title']) . $args['after_title'];
         }
 
         // Widget content
-        echo '<div class="dynamic-practice-areas-widget" data-widget-id="'.esc_attr($this->id).'">';
+        echo '<div class="dynamic-practice-areas-widget" data-widget-id="' . esc_attr($this->id) . '">';
 
         // JavaScript (will replace default content)
         echo '<ul class="practice-areas-list">';
@@ -1645,17 +1684,17 @@ class Dynamic_Practice_Areas_Widget extends WP_Widget
     public function form($instance)
     {
         $title = !empty($instance['title']) ? $instance['title'] : 'Practice Areas';
-        ?>
+    ?>
         <p>
             <label for="<?php
-            echo esc_attr($this->get_field_id('title')); ?>">Title:</label>
+                        echo esc_attr($this->get_field_id('title')); ?>">Title:</label>
             <input class="widefat" id="<?php
-            echo esc_attr($this->get_field_id('title')); ?>" name="<?php
-            echo esc_attr($this->get_field_name('title')); ?>" type="text" value="<?php
-            echo esc_attr($title); ?>">
+                                        echo esc_attr($this->get_field_id('title')); ?>" name="<?php
+                                                                                                echo esc_attr($this->get_field_name('title')); ?>" type="text" value="<?php
+                                                                                                                                                                        echo esc_attr($title); ?>">
         </p>
         <p class="description">This widget automatically displays practice areas for the selected city.</p>
-        <?php
+    <?php
     }
 
     /**
@@ -1710,11 +1749,11 @@ class Dynamic_Related_Locations_Widget extends WP_Widget
 
         echo $args['before_widget'];
         if (!empty($instance['title'])) {
-            echo $args['before_title'].apply_filters('widget_title', $instance['title']).$args['after_title'];
+            echo $args['before_title'] . apply_filters('widget_title', $instance['title']) . $args['after_title'];
         }
 
         // Widget content
-        echo '<div class="dynamic-related-locations-widget" data-widget-id="'.esc_attr($this->id).'">';
+        echo '<div class="dynamic-related-locations-widget" data-widget-id="' . esc_attr($this->id) . '">';
         echo '<ul class="related-locations-list">';
         echo '<li class="loading">Finding related locations...</li>';
         echo '</ul>';
@@ -1731,20 +1770,20 @@ class Dynamic_Related_Locations_Widget extends WP_Widget
     public function form($instance)
     {
         $title = !empty($instance['title']) ? $instance['title'] : 'Additional Locations:';
-        ?>
+    ?>
         <p>
             <label for="<?php
-            echo esc_attr($this->get_field_id('title')); ?>">Title:</label>
+                        echo esc_attr($this->get_field_id('title')); ?>">Title:</label>
             <input class="widefat" id="<?php
-            echo esc_attr($this->get_field_id('title')); ?>"
-                   name="<?php
-                   echo esc_attr($this->get_field_name('title')); ?>"
-                   type="text" value="<?php
-            echo esc_attr($title); ?>">
+                                        echo esc_attr($this->get_field_id('title')); ?>"
+                name="<?php
+                        echo esc_attr($this->get_field_name('title')); ?>"
+                type="text" value="<?php
+                                    echo esc_attr($title); ?>">
         </p>
         <p class="description">This widget automatically displays other locations that offer the current practice
             area.</p>
-        <?php
+<?php
     }
 
     /**
@@ -1769,25 +1808,25 @@ $dynamic_practice_areas_menu = new Dynamic_Practice_Areas_Menu();
 function dynamic_menu_activate()
 {
     // Create js directory if it doesn't exist
-    $js_dir = plugin_dir_path(__FILE__).'js';
+    $js_dir = plugin_dir_path(__FILE__) . 'js';
     if (!file_exists($js_dir)) {
         mkdir($js_dir, 0755, true);
     }
 
     // Create css directory if it doesn't exist
-    $css_dir = plugin_dir_path(__FILE__).'css';
+    $css_dir = plugin_dir_path(__FILE__) . 'css';
     if (!file_exists($css_dir)) {
         mkdir($css_dir, 0755, true);
     }
 
     // Create includes directory if it doesn't exist
-    $includes_dir = plugin_dir_path(__FILE__).'includes';
+    $includes_dir = plugin_dir_path(__FILE__) . 'includes';
     if (!file_exists($includes_dir)) {
         mkdir($includes_dir, 0755, true);
     }
 
     // Create Elementor widget file
-    $elementor_widget_file = $includes_dir.'/elementor-widget.php';
+    $elementor_widget_file = $includes_dir . '/elementor-widget.php';
     if (!file_exists($elementor_widget_file)) {
         $elementor_widget_content = <<<'EOT'
 <?php
@@ -2026,7 +2065,7 @@ EOT;
         file_put_contents($elementor_widget_file, $elementor_widget_content);
 
         // Create Related Locations Elementor widget file
-        $related_locations_widget_file = $includes_dir.'/elementor-related-locations-widget.php';
+        $related_locations_widget_file = $includes_dir . '/elementor-related-locations-widget.php';
         if (!file_exists($related_locations_widget_file)) {
             $related_locations_widget_content = <<<'EOT'
 <?php
@@ -2326,7 +2365,7 @@ EOT;
     }
 
     // Create dynamic-menu.js file if it doesn't exist
-    $js_file = $js_dir.'/dynamic-menu.js';
+    $js_file = $js_dir . '/dynamic-menu.js';
     if (!file_exists($js_file)) {
         $js_content = <<<'EOT'
 /**
@@ -3724,7 +3763,7 @@ EOT;
     }
 
     // Create Gutenberg block JS file
-    $block_js_file = $js_dir.'/dynamic-practice-areas-block.js';
+    $block_js_file = $js_dir . '/dynamic-practice-areas-block.js';
     if (!file_exists($block_js_file)) {
         $block_js_content = <<<'EOT'
 /**
@@ -3797,7 +3836,7 @@ EOT;
     }
 
     // Create CSS files for the block
-    $block_css_file = $css_dir.'/dynamic-practice-areas-block.css';
+    $block_css_file = $css_dir . '/dynamic-practice-areas-block.css';
     if (!file_exists($block_css_file)) {
         $block_css_content = <<<'EOT'
 .wp-block-dynamic-practice-areas {
@@ -3842,7 +3881,7 @@ EOT;
     }
 
     // Create CSS for related locations block
-    $related_locations_css_file = $css_dir.'/dynamic-related-locations.css';
+    $related_locations_css_file = $css_dir . '/dynamic-related-locations.css';
     if (!file_exists($related_locations_css_file)) {
         $related_locations_css_content = <<<'EOT'
 .elementor-dynamic-related-locations {
@@ -3889,7 +3928,7 @@ EOT;
         file_put_contents($related_locations_css_file, $related_locations_css_content);
     }
 
-    $block_editor_css_file = $css_dir.'/dynamic-practice-areas-block-editor.css';
+    $block_editor_css_file = $css_dir . '/dynamic-practice-areas-block-editor.css';
     if (!file_exists($block_editor_css_file)) {
         $block_editor_css_content = <<<'EOT'
 .wp-block-dynamic-practice-areas {
@@ -3907,13 +3946,13 @@ EOT;
     }
 
     // Create templates directory if it doesn't exist
-    $templates_dir = plugin_dir_path(__FILE__).'templates';
+    $templates_dir = plugin_dir_path(__FILE__) . 'templates';
     if (!file_exists($templates_dir)) {
         mkdir($templates_dir, 0755, true);
     }
 
     // Create includes directory if it doesn't exist
-    $includes_dir = plugin_dir_path(__FILE__).'includes';
+    $includes_dir = plugin_dir_path(__FILE__) . 'includes';
     if (!file_exists($includes_dir)) {
         mkdir($includes_dir, 0755, true);
     }
@@ -3923,23 +3962,23 @@ EOT;
 function dynamic_practice_areas_deactivated()
 {
     $product_id = 'dynamic_practice_areas';
-    update_option($product_id.'_license_status', 'invalid');
-    update_option($product_id.'_was_deactivated', '1');
+    update_option($product_id . '_license_status', 'invalid');
+    update_option($product_id . '_was_deactivated', '1');
 }
 
 // Handle plugin uninstallation
 function dynamic_practice_areas_uninstall()
 {
     $product_id = 'dynamic_practice_areas';
-    delete_option($product_id.'_license_key');
-    delete_option($product_id.'_license_status');
-    delete_option($product_id.'_activation_count');
-    delete_option($product_id.'_max_sites');
-    delete_option($product_id.'_expiration');
-    delete_option($product_id.'_last_license_check');
-    delete_option($product_id.'_first_activation');
-    delete_option($product_id.'_was_deactivated');
-    delete_option($product_id.'_show_reactivation_notice');
+    delete_option($product_id . '_license_key');
+    delete_option($product_id . '_license_status');
+    delete_option($product_id . '_activation_count');
+    delete_option($product_id . '_max_sites');
+    delete_option($product_id . '_expiration');
+    delete_option($product_id . '_last_license_check');
+    delete_option($product_id . '_first_activation');
+    delete_option($product_id . '_was_deactivated');
+    delete_option($product_id . '_show_reactivation_notice');
 }
 
 register_uninstall_hook(__FILE__, 'dynamic_practice_areas_uninstall');
