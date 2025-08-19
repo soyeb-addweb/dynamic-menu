@@ -13,6 +13,12 @@
     var currentStateSlug = null;
     var currentPracticeAreaSlug = null;
     var ecDynamicMenuRefreshTimer = null;
+    var lastRelatedWidgetKey = null;
+    var lastDetectionKey = null;
+    var lastMenuCitySlug = null;
+    var lastMenuStateSlug = null;
+    var bootedDynamicMenu = false;
+    var isUpdatingPracticeAreasMenu = false;
 
     function scheduleDynamicMenuRefresh() {
         if (ecDynamicMenuRefreshTimer) {
@@ -27,7 +33,7 @@
                     console.error('Dynamic menu refresh error', err);
                 }
             }
-        }, 100);
+        }, 400);
     }
 
     $(document).ready(function () {
@@ -244,7 +250,7 @@
         });
     });
 
-    // Elementor v3+ lifecycle hooks and DOM observer to keep bindings fresh
+    // Elementor v3+ lifecycle hooks to keep bindings fresh
     $(window).on('elementor/frontend/init', function () {
         if (window.elementorFrontend && window.elementorFrontend.hooks) {
             try {
@@ -256,13 +262,6 @@
         setTimeout(scheduleDynamicMenuRefresh, 250);
         setTimeout(scheduleDynamicMenuRefresh, 1000);
     });
-
-    try {
-        var ecDynamicMenuObserver = new MutationObserver(function () { scheduleDynamicMenuRefresh(); });
-        if (document.body) {
-            ecDynamicMenuObserver.observe(document.body, { childList: true, subtree: true });
-        }
-    } catch (e) {}
 
     $(window).on('load', scheduleDynamicMenuRefresh);
 
@@ -358,6 +357,13 @@
         if (subPracticeAreaSlug) {
             isSubPracticeAreaPage = true;
         }
+
+        // Build a detection key to avoid repeated work
+        var detectionKey = [stateSlug, citySlug, practiceAreaSlug, subPracticeAreaSlug, isCityPage, isPracticeAreaPage, isSubPracticeAreaPage].join('|');
+        if (detectionKey === lastDetectionKey) {
+            return; // no change in context
+        }
+        lastDetectionKey = detectionKey;
 
         // --- BRANCH A: we found a city in the URL ---
         if (isCityPage) {
@@ -593,18 +599,23 @@
      */
     function updatePracticeAreasMenu(citySlug, stateSlug) {
         // Don’t re-run if nothing changed
-        if (citySlug === currentCitySlug && stateSlug === currentStateSlug) {
+        if ((citySlug === currentCitySlug && stateSlug === currentStateSlug) ||
+            (citySlug === lastMenuCitySlug && stateSlug === lastMenuStateSlug) ||
+            isUpdatingPracticeAreasMenu) {
             return;
         }
 
         // store the new context
         currentCitySlug = citySlug;
         currentStateSlug = stateSlug || '';
+        lastMenuCitySlug = citySlug;
+        lastMenuStateSlug = stateSlug || '';
 
         // Detect whether we’re using the Elementor mega-menu
         var usingElementorMegaMenu = $('.e-n-menu').length > 0;
 
         // Fetch the practice areas from WP REST
+        isUpdatingPracticeAreasMenu = true;
         $.ajax({
             url: dynamicMenuData.ajaxurl,   // get-practice-areas endpoint
             method: 'GET',
@@ -626,10 +637,12 @@
                     // fallback: clear or restore if no practice areas found
                     restoreOriginalPracticeAreasMenu();
                 }
+                isUpdatingPracticeAreasMenu = false;
             },
             error: function (xhr, status, error) {
                 console.error('Error fetching practice areas:', error);
                 restoreOriginalPracticeAreasMenu();
+                isUpdatingPracticeAreasMenu = false;
             }
         });
     }
@@ -640,6 +653,12 @@
     function updateStandardPracticeAreasMenu(response) {
         // Update practice areas menu with city-specific practice areas
         var $practiceAreasMenu = $(dynamicMenuData.menu_selectors.practice_areas);
+
+        // Skip if menu already reflects this city
+        var targetCity = response.city_slug || currentCitySlug;
+        if ($practiceAreasMenu.data('ecPaCity') === targetCity) {
+            return;
+        }
 
         // Use city anchor text if available
         var cityDisplayName = response.city_anchor_text || response.city_name;
@@ -702,6 +721,9 @@
                 '</li>'
             );
         });
+
+        // Mark as rendered for this city
+        $practiceAreasMenu.data('ecPaCity', targetCity);
 
         // Make the practice areas menu clickable
         $practiceAreasMenu.find('> a').attr('href', '#');
@@ -778,6 +800,12 @@
             return;
         }
 
+        // Skip heavy rebuild if already rendered for this city
+        var targetCity = response.city_slug || currentCitySlug;
+        if ($contentContainer.data('ecPaCity') === targetCity) {
+            return;
+        }
+
         // Clear existing content
         $contentContainer.empty();
 
@@ -801,6 +829,9 @@
 
         $grid.append($list);
         $contentContainer.append($grid);
+
+        // Mark container as rendered for this city to avoid churn
+        $contentContainer.data('ecPaCity', targetCity);
 
         // Make the practice areas menu clickable
         $practiceAreasMenu.find('.e-n-menu-title-container, > a').attr('href', '#');
@@ -842,6 +873,8 @@
 
         currentCitySlug = null;
         currentCityName = null;
+        lastMenuCitySlug = null;
+        lastMenuStateSlug = null;
     }
 
     /**
@@ -1027,6 +1060,13 @@
                 }
             });
         }
+
+        // Build key and short-circuit if identical
+        var relatedKey = [stateSlug, citySlug, practiceAreaSlug].join('|');
+        if (relatedKey === lastRelatedWidgetKey) {
+            return;
+        }
+        lastRelatedWidgetKey = relatedKey;
 
         // Not a city/practice page? show all or default
         if (!isCityPracticePage) {
