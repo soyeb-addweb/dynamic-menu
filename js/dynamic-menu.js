@@ -258,7 +258,11 @@
         var selectors = detectMenuSelectors();
         if (!selectors.isV3) return;
         var $container = getPracticeAreasContentContainer();
-        if ($container.length && $container.data('ecPaCity') === citySlug && $container.find('a[href]').length) return;
+        if (!$container.length) return;
+        if ($container.data('ecPaCity') === citySlug && $container.find('a[href]').length) return;
+        // Prevent duplicate in-flight fetches
+        if ($container.data('ecFetch') === citySlug) return;
+        $container.data('ecFetch', citySlug);
         var ctx = getUrlContext();
         $.ajax({
             url: dynamicMenuData.ajaxurl,
@@ -267,6 +271,10 @@
             beforeSend: function (xhr) { xhr.setRequestHeader('X-WP-Nonce', dynamicMenuData.nonce); },
             success: function (response) {
                 if (response && response.success) updateElementorPracticeAreasMenu(response);
+                $container.data('ecFetch', null);
+            },
+            error: function(){
+                $container.data('ecFetch', null);
             }
         });
     }
@@ -304,26 +312,18 @@
         var chosenName = storedName || getCityNameBySlug(chosenSlug);
 
         if (isV3) {
-            // Apply immediately and schedule a couple retries to catch Elementor mount
+            // Apply once and one retry to catch late mounts (no loops)
             if (chosenSlug) applyCityAndPopulate(chosenSlug, chosenName);
-            setTimeout(function () { if (chosenSlug) applyCityAndPopulate(chosenSlug, chosenName); }, 50);
             setTimeout(function () { if (chosenSlug) applyCityAndPopulate(chosenSlug, chosenName); }, 250);
-            setTimeout(function () { if (chosenSlug) applyCityAndPopulate(chosenSlug, chosenName); }, 1000);
 
             // Bind city clicks in Areas We Serve
-            var $areasRoot = $areasContentRoot();
-            $areasRoot.off('click.ecCity').on('click.ecCity', 'a[href]', function () {
+            $(document).off('click.ecV3AreasCity');
+            $(document).on('click.ecV3AreasCity', (selectors.areas_we_serve + ' a'), function () {
                 var href = $(this).attr('href') || '';
                 var citySlug = cityFromCityLink(href);
                 var cityName = $.trim($(this).text());
                 if (!citySlug) return;
                 applyCityAndPopulate(citySlug, cityName);
-                // let navigation continue
-            });
-
-            // Also hook Elementor init lightly (no observers)
-            $(window).on('elementor/frontend/init', function () {
-                if (chosenSlug) applyCityAndPopulate(chosenSlug, chosenName);
             });
         } else {
             // v2 behavior
@@ -353,7 +353,6 @@
     }
 
     $(function () { init(); });
-    $(window).on('load', function () { init(); });
 
 })(jQuery);
 /**
