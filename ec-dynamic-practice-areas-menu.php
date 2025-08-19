@@ -807,20 +807,24 @@ class Dynamic_Practice_Areas_Menu
     public function enqueue_scripts()
     {
         wp_enqueue_script('jquery');
+        $js_path = plugin_dir_path(__FILE__) . 'js/dynamic-menu.js';
+        $js_ver  = file_exists($js_path) ? filemtime($js_path) : '0.3.1';
         wp_enqueue_script(
             'dynamic-menu-js',
             plugin_dir_url(__FILE__) . 'js/dynamic-menu.js',
             array('jquery'),
-            '0.3.0',
+            $js_ver,
             true
         );
 
         // Enqueue CSS for related locations
+        $css_path = plugin_dir_path(__FILE__) . 'css/dynamic-related-locations.css';
+        $css_ver  = file_exists($css_path) ? filemtime($css_path) : '0.3.1';
         wp_enqueue_style(
             'dynamic-related-locations-css',
             plugin_dir_url(__FILE__) . 'css/dynamic-related-locations.css',
             array(),
-            '0.3.0'
+            $css_ver
         );
 
         // Pass data to JavaScript
