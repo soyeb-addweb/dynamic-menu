@@ -86,11 +86,18 @@
             $practiceAreasMenu = $(dynamicMenuData.menu_selectors.practice_areas);
         }
         var $item = $practiceAreasMenu.closest('.e-n-menu-item').length ? $practiceAreasMenu.closest('.e-n-menu-item') : $practiceAreasMenu;
-        var $contentContainer = $item.find('.e-n-menu-content').first();
-        if (!$contentContainer.length) $contentContainer = $practiceAreasMenu.find('.e-con-inner');
-        if (!$contentContainer.length) $contentContainer = $('#pamenu');
-        if (!$contentContainer.length) $contentContainer = $item.find('.e-con-inner, .elementor-widget-container').first();
-        return $contentContainer;
+        // Prefer the dedicated inner container (#pamenu) if present
+        var $pamenu = $item.find('#pamenu').first();
+        if ($pamenu.length) return $pamenu;
+        // Otherwise target the inner content region inside the toggled content
+        var $inner = $item.find('.e-n-menu-content .e-con-inner').first();
+        if ($inner.length) return $inner;
+        // Fallbacks
+        var $content = $item.find('.e-n-menu-content').first();
+        if ($content.length) return $content;
+        var $globalPamenu = $('#pamenu');
+        if ($globalPamenu.length) return $globalPamenu;
+        return $practiceAreasMenu.find('.e-con-inner').first();
     }
 
     // ---------- URL + data helpers ----------
