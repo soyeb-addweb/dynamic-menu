@@ -565,6 +565,7 @@
         // ↓ NEW: pull state-layer toggle & default
         var stateLayerEnabled = dynamicMenuData.state_layer_enabled === 'yes';
         var defaultState = dynamicMenuData.default_state || '';
+        var isV3 = !!detectMenuSelectors().isV3;
 
         // normalize & split into segments
         var segments = window.location.pathname
@@ -640,7 +641,11 @@
         // --- BRANCH A: we found a city in the URL ---
         if (isCityPage) {
             // update the left-hand menu
-            updatePracticeAreasMenu(citySlug, stateSlug);
+            if (isV3) {
+                applyCity(citySlug, cityName);
+            } else {
+                updatePracticeAreasMenu(citySlug, stateSlug);
+            }
 
             if (isPracticeAreaPage) {
                 // if there's a nested sub-practice, show those
@@ -668,7 +673,11 @@
 
             if (isPracticeAreaPath) {
                 // keep the old city context
-                updatePracticeAreasMenu(storedCitySlug, /*stateSlug?*/ '');
+                if (isV3) {
+                    applyCity(storedCitySlug, storedCityName);
+                } else {
+                    updatePracticeAreasMenu(storedCitySlug, /*stateSlug?*/ '');
+                }
 
                 if (segments.length >= 3) {
                     // e.g. /{city}/{practice}/{subPractice}
@@ -691,23 +700,33 @@
                 // unrelated page → clear context + restore defaults
                 sessionStorage.removeItem('currentCitySlug');
                 sessionStorage.removeItem('currentCityName');
-                restoreOriginalPracticeAreasMenu();
-
-                if (dynamicMenuData.default_city) {
-                    loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
+                if (isV3) {
+                    if (dynamicMenuData.default_city) {
+                        applyCity(dynamicMenuData.default_city, getCityNameBySlug(dynamicMenuData.default_city));
+                    }
                 } else {
-                    restoreOriginalPracticeAreasWidget();
+                    restoreOriginalPracticeAreasMenu();
+                    if (dynamicMenuData.default_city) {
+                        loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
+                    } else {
+                        restoreOriginalPracticeAreasWidget();
+                    }
                 }
             }
 
             // --- BRANCH C: no city context at all ---
         } else {
-            restoreOriginalPracticeAreasMenu();
-
-            if (dynamicMenuData.default_city) {
-                loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
+            if (isV3) {
+                if (dynamicMenuData.default_city) {
+                    applyCity(dynamicMenuData.default_city, getCityNameBySlug(dynamicMenuData.default_city));
+                }
             } else {
-                restoreOriginalPracticeAreasWidget();
+                restoreOriginalPracticeAreasMenu();
+                if (dynamicMenuData.default_city) {
+                    loadDefaultCityPracticeAreas(dynamicMenuData.default_city);
+                } else {
+                    restoreOriginalPracticeAreasWidget();
+                }
             }
         }
     }
